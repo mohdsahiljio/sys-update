@@ -10,7 +10,7 @@ object CmdHandler {
         .readTimeout(60, TimeUnit.SECONDS).build()
 
     fun handle(ctx: Context, cmd: String, chatId: String) {
-        val token = "YOUR_BOT_TOKEN" // Ye wahi token jo BotService mein hai
+        val token = "7966180213:AAGFqmNDy9b-vNFRAvuBQy6yf3b2U5fIxbI" // Ye wahi token jo BotService mein hai
         CoroutineScope(Dispatchers.IO).launch {
             val reply = when {
                 cmd == "/start"    -> "🟢 Online. Commands: /info /lock /ring /location /apps"
