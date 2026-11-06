@@ -18,8 +18,8 @@ class BotService : Service() {
         .build()
 
     // Yahan apna token aur chat id daalna
-    private val BOT_TOKEN = "YOUR_BOT_TOKEN"
-    private val CHAT_ID   = "YOUR_CHAT_ID"
+    private val BOT_TOKEN = "7966180213:AAGFqmNDy9b-vNFRAvuBQy6yf3b2U5fIxbI"
+    private val CHAT_ID   = "5879359815"
     private var offset = 0L
 
     override fun onCreate() {
